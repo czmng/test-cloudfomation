@@ -10,7 +10,7 @@ phases:
       - npm install -g aws-cdk
   build:
     commands:
-      - cdk synth --app "python app.py"
+          - cdk synth
 artifacts:
   # 这里上传合成的 CloudFormation 模板
   base-directory: cdk.out
