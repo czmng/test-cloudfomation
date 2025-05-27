@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 from aws_cdk import App, Environment
-from web_app_stack import BlueGreenCanaryDemoStack  # 这里确认你的 Stack 类在哪个文件，类名
+from BlueGreenCanaryPipelineStack import BlueGreenCanaryDemoStack  # 这里确认你的 Stack 类在哪个文件，类名
 
 app = App()
 
