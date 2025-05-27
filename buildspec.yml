@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - npm install -g aws-cdk
+  build:
+    commands:
+      - cdk synth --app "python BlueGreenCanaryPipelineStack.py"
+artifacts:
+  # 这里上传合成的 CloudFormation 模板
+  base-directory: cdk.out
+  files:
+    - '**/*'
