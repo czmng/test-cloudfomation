@@ -189,6 +189,8 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             auto_delete_objects=True,
         )
 
+        self.deployment_bucket = deployment_bucket
+
         # 创建webapp CodePipeline
         webapp_pipeline = codepipeline.Pipeline(
             self,
@@ -234,6 +236,9 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
         )
 
+        cdk.CfnOutput(self, "CodeDeployApplication", value=app.application_name)
+        cdk.CfnOutput(self, "CodeDeployDeploymentGroup", value=deployment_group.deployment_group_name)
+        cdk.CfnOutput(self, "DeploymentBucket", value=self.deployment_bucket.bucket_name)
         
 
 
@@ -243,7 +248,7 @@ class BlueGreenCanaryDemoStage(Stage):
     def __init__(self, scope: Construct, construct_id: str, *, env: Environment) -> None:
         super().__init__(scope, construct_id, env=env)
 
-        BlueGreenCanaryDemoStack(self, "BlueGreenStack", env=env)
+        self.workload_stack = BlueGreenCanaryDemoStack(self, "BlueGreenStack", env=env)
 
 
 class PipelineStack(cdk.Stack):
@@ -310,7 +315,8 @@ class PipelineStack(cdk.Stack):
                 "ls -la app.zip",
                 "aws s3 cp app.zip s3://app-pipeline-2025-23/app.zip",
                 "echo 'Upload completed'",
-            ]，
+            ],
+
             env_from_cfn_outputs={
                 "DEPLOYMENT_BUCKET": deploy_stage.workload_stack.deployment_bucket,
             },
