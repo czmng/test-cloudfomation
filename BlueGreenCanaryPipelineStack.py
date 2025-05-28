@@ -155,6 +155,14 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             ],
             install_agent=False,  # already installed via UserData
             role=codedeploy_role,
+            deployment_group_name="MyIISDeploymentGroup",
+            ec2_instance_tags=codedeploy.InstanceTagSet(
+                {
+                    "Name": ["BlueGreenASG"],  # ASG 中实例的 Tag
+                }
+            ),
+            # ✅ 启用 GitHub 源
+            deployment_style=codedeploy.DeploymentStyle.with_traffic_control(),
         )
 
         # CloudWatch alarm
@@ -192,6 +200,8 @@ class PipelineStack(cdk.Stack):
             authentication=cdk.SecretValue.secrets_manager("github-token"),
         )
 
+        artifact_bucket_name = "app-pipeline-2025-23"
+        s3_key = "app.zip"
         # --- Synth step ----------------------------------------------------------
         synth = pipelines.ShellStep(
             "Synth",
@@ -200,6 +210,9 @@ class PipelineStack(cdk.Stack):
                 "npm install -g aws-cdk",  # CDK CLI
                 "python -m pip install -r requirements.txt",  # project deps
                 "cdk synth",  # produces CloudAssembly in cdk.out
+                "powershell Compress-Archive -Path my-webapp/* -DestinationPath app.zip",
+                # 上传 app.zip 到 S3
+                f"aws s3 cp app.zip s3://{artifact_bucket_name}/app.zip",
             ],
         )
 
@@ -220,6 +233,33 @@ class PipelineStack(cdk.Stack):
             self, "Prod", env=deploy_env
         )
         pipeline.add_stage(deploy_stage)
+        deploy_step = pipelines.ShellStep(
+            "TriggerCodeDeploy",
+            commands=[
+                f"aws deploy create-deployment "
+                f"--application-name DemoApp "
+                f"--deployment-group-name MyIISDeploymentGroup "
+                f"--s3-location bucket={artifact_bucket_name},key={s3_key},bundleType=zip"
+            ],
+            # 这里的 input 选用你 Synth 阶段的输出，确保先上传 ZIP
+            input=synth.output,
+        )
+
+        test_step = pipelines.ShellStep(
+            "TestDeployment",
+            commands=[
+                # 等待一会儿，让 CodeDeploy 部署完成（根据你的情况调整时间）
+                "echo Waiting 60 seconds for deployment to stabilize...",
+                "sleep 60",
+                # 访问 ALB 健康检查接口（换成你的 ALB DNS 或者用环境变量注入）
+                "curl -f http://YOUR_ALB_DNS/health.html",
+                "echo Deployment test succeeded!",
+            ],
+            # 这里的 input 可以用 deploy_step.output，但 deploy_step 没有输出，写空即可
+        )
+
+        # 把测试步骤放到 CodeDeploy 触发步骤后面
+        pipeline.add_stage(deploy_stage).add_post(deploy_step).add_post(test_step)
 
 app = cdk.App()
 

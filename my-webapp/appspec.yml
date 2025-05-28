@@ -1,0 +1,28 @@
+version: 0.0
+os: windows
+
+files:
+  - source: /
+    destination: C:\inetpub\wwwroot\MyWebApp
+
+hooks:
+  ApplicationStop:
+    - location: scripts\StopIISApp.ps1
+      timeout: 180
+      runas: Administrator
+  BeforeInstall:
+    - location: scripts\CleanOldApp.ps1
+      timeout: 180
+      runas: Administrator
+  AfterInstall:
+    - location: scripts\InstallWeb.ps1
+      timeout: 300
+      runas: Administrator
+  ApplicationStart:
+    - location: scripts\StartIISApp.ps1
+      timeout: 180
+      runas: Administrator
+  ValidateService:
+    - location: scripts\ValidateService.ps1
+      timeout: 300
+      runas: Administrator
