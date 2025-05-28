@@ -188,9 +188,12 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
         )
-
+        
         self.deployment_bucket = deployment_bucket
 
+
+
+        
         # 创建webapp CodePipeline
         webapp_pipeline = codepipeline.Pipeline(
             self,
@@ -304,22 +307,24 @@ class PipelineStack(cdk.Stack):
         deploy_stage = BlueGreenCanaryDemoStage(self, "Prod", env=deploy_env)
         stage_deployment = pipeline.add_stage(deploy_stage)
         
+        wait_step = pipelines.ShellStep(
+            "WaitForInfrastructure", 
+            input=build_app.primary_output,
+            commands=["echo 'Infrastructure deployed, proceeding with app deployment'"]
+        )
+
         # CodeDeploy step
         codedeploy_step = pipelines.ShellStep(
             "Deploy",
-            input=build_app.primary_output,
+            input=wait_step.primary_output,
             commands=[
                 "echo 'Uploading to S3...'",
                 "ls -la app.zip",
                 "aws s3 cp app.zip s3://app-pipeline-2025-23/app.zip",
                 "echo 'Upload completed'",
-            ],
-
-            env_from_cfn_outputs={
-                "DEPLOYMENT_BUCKET": deploy_stage.workload_stack.deployment_bucket,
-            },
+            ]
         )
-
+        stage_deployment.add_post(wait_step)
         stage_deployment.add_post(codedeploy_step)
 
 
