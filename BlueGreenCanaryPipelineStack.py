@@ -262,9 +262,12 @@ class PipelineStack(cdk.Stack):
             "BuildApp",
             input=source,
             commands=[
-                "cd app",
+                "ls -la",
+                "ls -la my-webapp/",
+                "cd my-webapp",
                 "zip -r ../app.zip .",
                 "cd ..",
+                "ls -la app.zip",
             ],
             primary_output_directory=".",
         )
@@ -301,7 +304,10 @@ class PipelineStack(cdk.Stack):
             "Deploy",
             input=build_app.primary_output,
             commands=[
-                "aws s3 cp app-package.zip s3://app-pipeline-2025-23/app.zip",
+                "echo 'Uploading to S3...'",
+                "ls -la app.zip",
+                "aws s3 cp app.zip s3://app-pipeline-2025-23/app.zip",
+                "echo 'Upload completed'",
             ]
         )
 
