@@ -181,10 +181,12 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
         # Source Artifact
         source_output = codepipeline.Artifact("SourceOutput")
 
-        deployment_bucket = s3.Bucket.from_bucket_name(
+        deployment_bucket = s3.Bucket(
             self,
             "DeploymentBucket",
-            "app-pipeline-2025-23"
+            bucket_name="app-pipeline-2025-23",
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
         )
 
         # 创建webapp CodePipeline
