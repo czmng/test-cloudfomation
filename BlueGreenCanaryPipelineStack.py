@@ -168,61 +168,6 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
         )
 
-        # RDS MySQL (single‑AZ for demo)
-        db_sg = ec2.SecurityGroup(self, "DBSG", vpc=vpc, allow_all_outbound=True)
-        db_sg.add_ingress_rule(asg_sg, ec2.Port.tcp(3306))
-
-        rds.DatabaseInstance(
-            self,
-            "MySQLDB",
-            engine=rds.DatabaseInstanceEngine.mysql(
-                version=rds.MysqlEngineVersion.VER_8_0
-            ),
-            vpc=vpc,
-            vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
-            ),
-            credentials=rds.Credentials.from_generated_secret("admin"),
-            instance_type=ec2.InstanceType.of(
-                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL
-            ),
-            removal_policy=RemovalPolicy.DESTROY,
-            deletion_protection=False,
-            multi_az=False,
-            allocated_storage=20,
-            security_groups=[db_sg],
-        )
-
-        # ElastiCache Redis
-        cache_subnet_group = elasticache.CfnSubnetGroup(
-            self,
-            "CacheSubnetGroup",
-            description="Cache subnet group",
-            subnet_ids=[subnet.subnet_id for subnet in vpc.private_subnets],
-            cache_subnet_group_name="demo-cache-subnet-group",
-        )
-
-        elasticache.CfnCacheCluster(
-            self,
-            "RedisCluster",
-            cache_node_type="cache.t3.micro",
-            engine="redis",
-            num_cache_nodes=1,
-            vpc_security_group_ids=[db_sg.security_group_id],
-            cache_subnet_group_name=cache_subnet_group.ref,
-            engine_version="6.x",
-            port=6379,
-        )
-
-        # CloudFront distribution in front of ALB
-        cloudfront.Distribution(
-            self,
-            "CFDistribution",
-            default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.LoadBalancerV2Origin(public_alb)
-            ),
-        )
-
 
 class BlueGreenCanaryDemoStage(Stage):
     """Wrap the workload stack in a stage so it can be added to the pipeline."""
@@ -276,4 +221,15 @@ class PipelineStack(cdk.Stack):
         )
         pipeline.add_stage(deploy_stage)
 
+app = cdk.App()
 
+PipelineStack(
+    app,
+    "BlueGreenCanaryPipelineStack",
+    env=Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"),
+        region=os.getenv("CDK_DEFAULT_REGION"),
+    ),
+)
+
+app.synth()
