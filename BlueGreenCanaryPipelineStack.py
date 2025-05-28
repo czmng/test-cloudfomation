@@ -164,7 +164,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             "WebAppPipelineRole",
             assumed_by=iam.ServicePrincipal("codepipeline.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("AWSCodePipelineFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AWSCodePipeline_FullAccess"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AWSCodeDeployFullAccess"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
             ]
