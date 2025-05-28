@@ -160,9 +160,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
                 {
                     "Name": ["BlueGreenASG"],  # ASG 中实例的 Tag
                 }
-            ),
-            # ✅ 启用 GitHub 源
-            deployment_style=codedeploy.DeploymentStyle.with_traffic_control(),
+            )
         )
 
         # CloudWatch alarm
