@@ -236,9 +236,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
         )
 
-        cdk.CfnOutput(self, "CodeDeployApplication", value=app.application_name)
-        cdk.CfnOutput(self, "CodeDeployDeploymentGroup", value=deployment_group.deployment_group_name)
-        cdk.CfnOutput(self, "DeploymentBucket", value=self.deployment_bucket.bucket_name)
+       
         
 
 
