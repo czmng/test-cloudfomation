@@ -221,7 +221,10 @@ class PipelineStack(cdk.Stack):
             synth=synth,
             cross_account_keys=False,  # simplify demo
         )
-
+        deploy_stage_construct = BlueGreenCanaryDemoStage( # 创建 Stage 实例，ID 为 "Prod"
+            self, "Prod", env=deploy_env
+        )
+        app_stage_deployment = pipeline.add_stage(deploy_stage_construct)
         # --- Deploy Stage --------------------------------------------------------
         deploy_env = Environment(
             account=os.getenv("CDK_DEFAULT_ACCOUNT"),
@@ -255,7 +258,7 @@ class PipelineStack(cdk.Stack):
         # )
 
         # 把测试步骤放到 CodeDeploy 触发步骤后面
-        pipeline.add_stage(deploy_stage).add_post(deploy_step)
+        app_stage_deployment.add_post(deploy_step)
 
 app = cdk.App()
 
