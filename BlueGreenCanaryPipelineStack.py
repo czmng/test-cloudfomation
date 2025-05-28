@@ -155,14 +155,63 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             ],
             install_agent=False,  # already installed via UserData
             role=codedeploy_role,
-            deployment_group_name="MyIISDeploymentGroup",
-            ec2_instance_tags=codedeploy.InstanceTagSet(
-                {
-                    "Name": ["BlueGreenASG"],  # ASG 中实例的 Tag
-                }
-            )
+        )
+        pipeline_role = iam.Role(
+            self,
+            "WebAppPipelineRole",
+            assumed_by=iam.ServicePrincipal("codepipeline.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name("AWSCodePipelineFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AWSCodeDeployFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
+            ]
         )
 
+        # CodePipeline Artifact Store
+        artifact_store = s3.Bucket(
+            self,
+            "PipelineArtifacts",
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+        )
+
+        # Source Artifact
+        source_output = codepipeline.Artifact("SourceOutput")
+
+        # 创建webapp CodePipeline
+        webapp_pipeline = codepipeline.Pipeline(
+            self,
+            "WebAppPipeline",
+            pipeline_name="webapp",
+            role=pipeline_role,
+            artifact_bucket=artifact_store,
+            stages=[
+                # Source Stage - 监控S3存储桶
+                codepipeline.StageProps(
+                    stage_name="Source",
+                    actions=[
+                        codepipeline_actions.S3SourceAction(
+                            action_name="S3Source",
+                            bucket=deployment_bucket,
+                            bucket_key="app.zip",
+                            output=source_output,
+                            trigger=codepipeline_actions.S3Trigger.EVENTS,  # 使用CloudWatch Events触发
+                        )
+                    ]
+                ),
+                # Deploy Stage - 使用CodeDeploy
+                codepipeline.StageProps(
+                    stage_name="Deploy",
+                    actions=[
+                        codepipeline_actions.CodeDeployServerDeployAction(
+                            action_name="CodeDeploy",
+                            input=source_output,
+                            deployment_group=deployment_group,
+                        )
+                    ]
+                )
+            ]
+        )
         # CloudWatch alarm
         cloudwatch.Alarm(
             self,
@@ -173,6 +222,8 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             datapoints_to_alarm=1,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
         )
+
+        
 
 
 class BlueGreenCanaryDemoStage(Stage):
@@ -185,80 +236,68 @@ class BlueGreenCanaryDemoStage(Stage):
 
 
 class PipelineStack(cdk.Stack):
-    """Self‑mutating CDK Pipeline."""
+    """Self‑mutating CDK Pipeline."""
 
     def __init__(self, scope: Construct, construct_id: str, *, env: Environment) -> None:
         super().__init__(scope, construct_id, env=env)
 
-        # --- Source configuration ------------------------------------------------
-        # Replace <OWNER>/<REPO> and secret name to match your GitHub settings.
+        # Source
         source = pipelines.CodePipelineSource.git_hub(
-            "czmng/test-cloudfomation",  # e.g. "my‑org/blue‑green‑demo"
+            "czmng/test-cloudfomation",
             "main",
             authentication=cdk.SecretValue.secrets_manager("github-token"),
         )
 
-        artifact_bucket_name = "app-pipeline-2025-23"
-        s3_key = "app.zip"
-        # --- Synth step ----------------------------------------------------------
+        # Build app package
+        build_app = pipelines.ShellStep(
+            "BuildApp",
+            input=source,
+            commands=[
+                "cd app",
+                "zip -r ../app.zip .",
+                "cd ..",
+            ],
+            primary_output_directory=".",
+        )
+
+        # Synth
         synth = pipelines.ShellStep(
             "Synth",
             input=source,
             commands=[
-                "npm install -g aws-cdk",  # CDK CLI
-                "python -m pip install -r requirements.txt",  # project deps
-                "cdk synth",  # produces CloudAssembly in cdk.out
-                "powershell Compress-Archive -Path my-webapp/* -DestinationPath app.zip",
-                # 上传 app.zip 到 S3
-                f"aws s3 cp app.zip s3://{artifact_bucket_name}/app.zip",
+                "npm install -g aws-cdk",
+                "python -m pip install -r requirements.txt",
+                "cdk synth",
             ],
         )
 
-        # --- Pipeline ------------------------------------------------------------
+        # Pipeline
         pipeline = pipelines.CodePipeline(
             self,
             "Pipeline",
             synth=synth,
-            cross_account_keys=False,  # simplify demo
+            cross_account_keys=False,
         )
-        deploy_stage_construct = BlueGreenCanaryDemoStage( # 创建 Stage 实例，ID 为 "Prod"
-            self, "Prod", env=deploy_env
-        )
-        app_stage_deployment = pipeline.add_stage(deploy_stage_construct)
-        # --- Deploy Stage --------------------------------------------------------
+    
+        # Deploy stage
         deploy_env = Environment(
             account=os.getenv("CDK_DEFAULT_ACCOUNT"),
             region=os.getenv("CDK_DEFAULT_REGION"),
         )
-        deploy_stage = BlueGreenCanaryDemoStage(
-            self, "Prod", env=deploy_env
-        )
-        pipeline.add_stage(deploy_stage)
-        deploy_step = pipelines.ShellStep(
-            "TriggerCodeDeploy",
+        deploy_stage = BlueGreenCanaryDemoStage(self, "Prod", env=deploy_env)
+        stage_deployment = pipeline.add_stage(deploy_stage)
+        
+        # CodeDeploy step
+        codedeploy_step = pipelines.ShellStep(
+            "Deploy",
+            input=build_app.primary_output,
             commands=[
-                f"aws deploy create-deployment "
-                f"--application-name DemoApp "
-                f"--deployment-group-name MyIISDeploymentGroup "
-                f"--s3-location bucket={artifact_bucket_name},key={s3_key},bundleType=zip"
+                "aws s3 cp app-package.zip s3://app-pipeline-2025-23/app.zip",
             ]
         )
 
-        # test_step = pipelines.ShellStep(
-        #     "TestDeployment",
-        #     commands=[
-        #         # 等待一会儿，让 CodeDeploy 部署完成（根据你的情况调整时间）
-        #         "echo Waiting 60 seconds for deployment to stabilize...",
-        #         "sleep 60",
-        #         # 访问 ALB 健康检查接口（换成你的 ALB DNS 或者用环境变量注入）
-        #         "curl -f http://YOUR_ALB_DNS/health.html",
-        #         "echo Deployment test succeeded!",
-        #     ],
-        #     # 这里的 input 可以用 deploy_step.output，但 deploy_step 没有输出，写空即可
-        # )
+        stage_deployment.add_post(codedeploy_step)
 
-        # 把测试步骤放到 CodeDeploy 触发步骤后面
-        app_stage_deployment.add_post(deploy_step)
 
 app = cdk.App()
 
