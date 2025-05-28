@@ -18,7 +18,7 @@ import os
 
 import aws_cdk as cdk
 from aws_cdk import (
-    
+
     Duration,
     RemovalPolicy,
     Stage,
@@ -181,6 +181,12 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
         # Source Artifact
         source_output = codepipeline.Artifact("SourceOutput")
 
+        deployment_bucket = s3.Bucket.from_bucket_name(
+            self,
+            "DeploymentBucket",
+            "app-pipeline-2025-23"
+        )
+        
         # 创建webapp CodePipeline
         webapp_pipeline = codepipeline.Pipeline(
             self,
