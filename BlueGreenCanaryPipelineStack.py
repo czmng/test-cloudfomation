@@ -310,7 +310,10 @@ class PipelineStack(cdk.Stack):
                 "ls -la app.zip",
                 "aws s3 cp app.zip s3://app-pipeline-2025-23/app.zip",
                 "echo 'Upload completed'",
-            ]
+            ]，
+            env_from_cfn_outputs={
+                "DEPLOYMENT_BUCKET": deploy_stage.workload_stack.deployment_bucket,
+            },
         )
 
         stage_deployment.add_post(codedeploy_step)
