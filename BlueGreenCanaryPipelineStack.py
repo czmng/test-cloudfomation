@@ -240,7 +240,7 @@ class PipelineStack(cdk.Stack):
                 f"--s3-location bucket={artifact_bucket_name},key={s3_key},bundleType=zip"
             ],
             # 这里的 input 选用你 Synth 阶段的输出，确保先上传 ZIP
-            input=synth.output,
+            input=synth.outputs,
         )
 
         test_step = pipelines.ShellStep(
