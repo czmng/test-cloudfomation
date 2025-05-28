@@ -145,7 +145,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3ReadOnlyAccess")
         )
 
-        codedeploy.ServerDeploymentGroup(
+        deployment_group = codedeploy.ServerDeploymentGroup(
             self,
             "DeploymentGroup",
             application=app,
@@ -186,7 +186,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             "DeploymentBucket",
             "app-pipeline-2025-23"
         )
-        
+
         # 创建webapp CodePipeline
         webapp_pipeline = codepipeline.Pipeline(
             self,
