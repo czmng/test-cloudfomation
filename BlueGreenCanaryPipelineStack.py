@@ -18,6 +18,7 @@ import os
 
 import aws_cdk as cdk
 from aws_cdk import (
+    
     Duration,
     RemovalPolicy,
     Stage,
@@ -26,12 +27,13 @@ from aws_cdk import (
     aws_iam as iam,
     aws_autoscaling as autoscaling,
     aws_elasticloadbalancingv2 as elbv2,
-    aws_rds as rds,
-    aws_elasticache as elasticache,
     aws_codedeploy as codedeploy,
     aws_cloudwatch as cloudwatch,
-    aws_cloudfront as cloudfront,
-    aws_cloudfront_origins as origins,
+    aws_s3 as s3,
+    aws_codepipeline as codepipeline,
+    aws_codepipeline_actions as codepipeline_actions,
+    aws_events as events,
+    aws_events_targets as targets,
 )
 from constructs import Construct
 from aws_cdk import pipelines as pipelines  # CDK v2 alias
@@ -156,6 +158,7 @@ class BlueGreenCanaryDemoStack(cdk.Stack):
             install_agent=False,  # already installed via UserData
             role=codedeploy_role,
         )
+
         pipeline_role = iam.Role(
             self,
             "WebAppPipelineRole",
