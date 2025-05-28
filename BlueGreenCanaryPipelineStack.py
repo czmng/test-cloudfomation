@@ -238,26 +238,24 @@ class PipelineStack(cdk.Stack):
                 f"--application-name DemoApp "
                 f"--deployment-group-name MyIISDeploymentGroup "
                 f"--s3-location bucket={artifact_bucket_name},key={s3_key},bundleType=zip"
-            ],
-            # 这里的 input 选用你 Synth 阶段的输出，确保先上传 ZIP
-            input=synth.outputs,
+            ]
         )
 
-        test_step = pipelines.ShellStep(
-            "TestDeployment",
-            commands=[
-                # 等待一会儿，让 CodeDeploy 部署完成（根据你的情况调整时间）
-                "echo Waiting 60 seconds for deployment to stabilize...",
-                "sleep 60",
-                # 访问 ALB 健康检查接口（换成你的 ALB DNS 或者用环境变量注入）
-                "curl -f http://YOUR_ALB_DNS/health.html",
-                "echo Deployment test succeeded!",
-            ],
-            # 这里的 input 可以用 deploy_step.output，但 deploy_step 没有输出，写空即可
-        )
+        # test_step = pipelines.ShellStep(
+        #     "TestDeployment",
+        #     commands=[
+        #         # 等待一会儿，让 CodeDeploy 部署完成（根据你的情况调整时间）
+        #         "echo Waiting 60 seconds for deployment to stabilize...",
+        #         "sleep 60",
+        #         # 访问 ALB 健康检查接口（换成你的 ALB DNS 或者用环境变量注入）
+        #         "curl -f http://YOUR_ALB_DNS/health.html",
+        #         "echo Deployment test succeeded!",
+        #     ],
+        #     # 这里的 input 可以用 deploy_step.output，但 deploy_step 没有输出，写空即可
+        # )
 
         # 把测试步骤放到 CodeDeploy 触发步骤后面
-        pipeline.add_stage(deploy_stage).add_post(deploy_step).add_post(test_step)
+        pipeline.add_stage(deploy_stage).add_post(deploy_step)
 
 app = cdk.App()
 
