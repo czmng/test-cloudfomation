@@ -48,13 +48,13 @@ class BlueGreenCanaryDemoStack(Stack):
             self, "SSM-Role", assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
             managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")]
         )
-        self.db_master = rds.DatabaseInstance(
-            self, "RDS-MySQL-Master", engine=rds.DatabaseInstanceEngine.mysql(version=rds.MysqlEngineVersion.VER_8_0_35),
-            instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
-            vpc=self.vpc, vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
-            security_groups=[db_sg], multi_az=True, database_name="prodDB",
-            credentials=rds.Credentials.from_generated_secret("ProdDBAdmin"),
-        )
+        # self.db_master = rds.DatabaseInstance(
+        #     self, "RDS-MySQL-Master", engine=rds.DatabaseInstanceEngine.mysql(version=rds.MysqlEngineVersion.VER_8_0_35),
+        #     instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+        #     vpc=self.vpc, vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
+        #     security_groups=[db_sg], multi_az=True, database_name="prodDB",
+        #     credentials=rds.Credentials.from_generated_secret("ProdDBAdmin"),
+        # )
 
 
         windows_ami = ec2.MachineImage.latest_windows(
