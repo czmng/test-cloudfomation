@@ -1,1 +1,0 @@
-Write-Host "AllowTraffic hook passed."
