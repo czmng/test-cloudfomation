@@ -15,9 +15,8 @@ from aws_cdk import (
 from constructs import Construct
 from aws_cdk import pipelines as cdk_pipelines
 
-
 # --- Configuration ---
-JUMPBOX_KEY_NAME = "my-key-pair"
+JUMPBOX_KEY_NAME = "chark-test"
 
 CDK_DEFAULT_ACCOUNT = os.getenv("CDK_DEFAULT_ACCOUNT")
 CDK_DEFAULT_REGION = os.getenv("CDK_DEFAULT_REGION")
